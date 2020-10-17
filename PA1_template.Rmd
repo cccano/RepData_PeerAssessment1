@@ -8,18 +8,103 @@ output:
 
 ## Loading and preprocessing the data
 
+zip <- unzip("data_activity.zip")
+activity <- read.csv("activity.csv")
+actdf <- head(activity)
 
+class(actdf$date)
+class(actdf$interval)
 
 ## What is mean total number of steps taken per day?
 
+hist(tapply(activity$steps, activity$date, mean),
+     main = "mean total number of steps per day",
+     xlab = "days", col = "green")
 
+library(plyr)
+dfmm <- ddply(activity,.(date),summarize,
+                mean = mean(steps))
+dfmm$median <- ddply(activity,.(date),summarize,
+                       median = median(steps))
 
 ## What is the average daily activity pattern?
 
+library(plyr)                  
+library(lattice)
+library(dplyr)
+#si
+tabla1 <- ddply(activity,.(date),summarize,
+               steps = mean(steps))
+#si
+tabla2 <- ddply(activity,.(interval), summarise, 
+                steps = max(summary(steps)))
+#si
+xyplot(tabla1$steps ~ tabla2$interval, type = "l", 
+       main = "mean of steps for day vs interval",
+       xlab = "interval", ylab = "steps")
+#si    
+tabla3 <- arrange(tabla2, steps)
+tail(tabla3)
+#si
+plot(tabla2$steps ~ tabla2$interval, type = "l",
+     col = "green", xlab = "interval", ylab = "steps")
+abline(h = max(tabla2$steps), v = 615)
 
 
 ## Imputing missing values
 
+# si
+list_na <- is.na(activity$steps)
+table(list_na)
+
+library(plyr)                  
+library(lattice)
+library(dplyr)
+#si
+tabla <- filter(activity, activity$steps != is.na(activity$steps))
+df <- ddply(tabla,.(date),summarize,
+                steps = mean(steps))
+#si
+for(i in 1:17568){
+        f <- is.na(activity$steps[i])
+        if(f == TRUE)
+                t <- mean(df$steps) - sqrt(var(df$steps))
+                activity[i,1]<- t }
+#si
+df1 <- ddply(tabla,.(date),summarise,
+             steps = sum(steps))
+hist(df1$steps,
+     main = "total number of steps per day",
+     xlab = "steps", col = "green")
+
+barplot(df1$steps,names.arg = df1$date, col = "green",
+        main = "total number of steps per day",
+        xlab = "date", ylab = "steps")
+#si 
+df$median <- ddply(tabla,.(date),summarise,
+                   steps = median(steps))
+diference <- c(mean(dfmean$mean), mean(df$steps))
+diference1 <- c(median(dfmean$median$median),
+                median(df$median$steps))
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+dfmean <- dfmean[,-3]
+dfmean$date1 <- as.Date(dfmean$date)
+dfmean$days <- weekdays(dfmean$date1)
+
+#si
+for(i in 1:61){
+        day <- dfmean$days[i]
+        if(day == "sábado" || day == "domingo")
+                dfmean$typeday[i] <- "weekend"
+       else{
+               dfmean$typeday[i] <- "weekday"}
+                
+}
+#si
+library(lattice)
+xyplot(dfmean$mean ~ tabla2$interval|dfmean$typeday,
+       type = "l",
+       layout= c(1,2))
