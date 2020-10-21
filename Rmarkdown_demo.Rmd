@@ -1,0 +1,169 @@
+# Activity Monitoring
+---
+title: "Activity Monitoring"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading and preprocessing the data
+
+we will start loading the data and transforming it if necessary,we will also observe the data variables
+
+```{r,echo=TRUE}
+activity <- read.csv("activity.csv")
+head(activity)
+```
+
+```{r, echo=TRUE}
+class(activity$date)
+class(activity$interval)
+```
+## What is mean total number of steps taken per day?
+
+we will first use a histogram to see the average frequency of steps per day and then we will create a data set of the mean and median steps per day
+```{r, echo=TRUE}
+hist(tapply(activity$steps, activity$date, mean),
+     main = "mean total number of steps per day",
+     xlab = "days", col = "green")
+```
+```{r, echo=TRUE}
+library(plyr)
+dfmm <- ddply(activity,.(date),summarize,
+                mean = mean(steps))
+dfmm$median <- ddply(activity,.(date),summarize,
+                       median = median(steps))
+head(dfmm,10)
+```
+```{r, echo=TRUE}
+head(dfmm$median,10)
+
+```
+
+## What is the average daily activity pattern?
+
+Next we are going to load the dplyr and lattice packages to create a summary table of the average of steps taken per day and interval and then graph the variables of interest
+```{r, echo=TRUE}
+library(lattice)
+library(dplyr)
+table1 <- ddply(activity,.(date),summarize,
+               steps = mean(steps))
+
+table2 <- ddply(activity,.(interval), summarise, 
+                steps = max(summary(steps)))
+```
+
+```{r,echo=TRUE}
+head(table1)
+
+```
+```{r,echo=TRUE}
+head(table2)
+```
+
+```{r,echo=TRUE}
+xyplot(table1$steps ~ table2$interval, type = "l", 
+       main = "mean of steps for day vs interval",
+       xlab = "interval", ylab = "steps")
+```
+
+we will create a third table to find the interval with the greatest number of steps  
+
+```{r,echo=TRUE}
+table3 <- arrange(table2, steps)
+```
+```{r,echo=TRUE}
+tail(table3,5)
+```
+as we see the interval with the greatest number of steps is 615 with 806 steps, which we will observe in a graph
+
+```{r, echo=TRUE}
+plot(table2$steps ~ table2$interval, type = "l",
+     col = "green", xlab = "interval", ylab = "steps")
+abline(h = max(table2$steps), v = 615)
+```
+
+## Imputing missing values
+
+at this point we will impute the NA data and find how many there are in our data frame.
+
+```{r, echo=TRUE}
+list_na <- is.na(activity$steps)
+table(list_na)
+```
+we have 2304 NA values, so we will replace them from our original data frame with the mean minus the standard deviation of the steps per day.
+
+```{r,echo=FALSE}
+activity2 <- filter(activity, activity$steps != is.na(activity$steps))
+df <- ddply(activity2,.(date),summarize,
+                steps = mean(steps))
+```
+
+```{r,echo=TRUE}
+t <- mean(df$steps) - sqrt(var(df$steps))
+for(i in 1:17568){
+        f <- is.na(activity$steps[i])
+        if(f == TRUE)
+                activity[i,1]<- t }
+```
+
+now we will make a histogram and a bar graph to observe the changes obtained with respect to the original data.
+
+```{r, echo=TRUE}
+df1 <- ddply(activity2,.(date),summarise,
+             steps = sum(steps))
+hist(df1$steps,
+     main = "total number of steps per day",
+     xlab = "steps", col = "green")
+```
+```{r,echo=TRUE}
+barplot(df1$steps,names.arg = df1$date, col = "green",
+        main = "total number of steps per day",
+        xlab = "date", ylab = "steps")
+
+```
+In the histogram we can see that the frequency of the steps is mostly between 10,000 and 15,000 steps and seeing the bar graph, the day on which the most steps were taken was 11/19/2012.
+
+now we will compare the mean and median per day of the data without NA values with those with NA values.
+
+```{r,echo=TRUE}
+df$median <- ddply(activity2,.(date),summarise,
+                   steps = median(steps))
+difmean <- c(mean(dfmm$mean), mean(df$steps))
+difmedian <- c(median(dfmm$median$median),
+                median(df$median$steps))
+print(difmean)
+print(difmedian)
+```
+we see that the data with NA values have a bias towards them, while the data without these values gives us a numerical value that gives us an idea of how the data is distributed.
+
+## Are there differences in activity patterns between weekdays and weekends?  
+
+Now we are going to introduce a new variable which we will call type of day, that is, it will have two levels, day of the week and weekend, to observe the steps regarding the intervals in these days.
+
+```{r,echo=TRUE}
+dfmm <- dfmm[,-3]
+dfmm$date1 <- as.Date(dfmm$date)
+dfmm$days <- weekdays(dfmm$date1)
+```
+
+```{r,echo=TRUE}
+for(i in 1:61){
+        day <- dfmm$days[i]
+        if(day == "Saturday" || day == "Sunday")
+                dfmm$typeday[i] <- "weekend"
+       else{
+               dfmm$typeday[i] <- "weekday"}
+        }
+```
+
+```{r,echo=TRUE}
+xyplot(dfmm$mean ~ table2$interval|dfmm$typeday,
+       type = "l",
+       layout= c(1,2),
+       xlab = "interval", ylab = "steps")
+```
+
+
